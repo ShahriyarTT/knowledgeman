@@ -1,0 +1,27 @@
+services:
+  knowledgeman_db:
+    image: postgres:15
+    container_name: knowledgeman-db
+    environment:
+      POSTGRES_DB: knowledgeman
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  knowledgeman_backend:
+    image: knowledgeman:latest
+    container_name: knowledgeman-backend
+    depends_on:
+      - knowledgeman_db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://knowledgeman_db:5432/knowledgeman
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres123
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
