@@ -1,6 +1,6 @@
 package com.virtusbellatoris.knowledgeman.service;
 
-import com.virtusbellatoris.knowledgeman.Tag;
+import com.virtusbellatoris.knowledgeman.model.Tag;
 import com.virtusbellatoris.knowledgeman.repository.TagRepository;
 import org.springframework.stereotype.Service;
 
@@ -10,6 +10,8 @@ import java.util.List;
 public class TagService {
 
     private final TagRepository tagRepository;
+
+    // Constructor
     public TagService(TagRepository tagRepository) {
         this.tagRepository = tagRepository;
     }
@@ -18,9 +20,13 @@ public class TagService {
         return tagRepository.findAll();
     };
 
-    public Tag getTagByName(String name){
-        return tagRepository.findByName(name);
+    /*
+    public Tag getTagById(Integer id){
+        return tagRepository.findById(id);
     }
+
+     */
+
 
     public Tag saveTag(Tag tag){
         if (tagRepository.findByName(tag.getName()).isPresent()){
@@ -38,8 +44,8 @@ public class TagService {
     // updateTag(Tag updatedTag)
     // updateTag(Tag tag)
 
-    public Tag updateTag(String name, Tag updatedTag){
-        Tag existingTag = tagRepository.findByName(name)
+    public Tag updateTag(Integer id, Tag updatedTag){
+        Tag existingTag = tagRepository.findById(id)
             .orElseThrow(() ->
                 new RuntimeException("This tag does not exist.")
             );
@@ -51,8 +57,8 @@ public class TagService {
         return tagRepository.save(existingTag);
     }
 
-    public void deleteTag(String name) {
-        Tag tag = tagRepository.findByName(name)
+    public void deleteTag(Integer id) {
+        Tag tag = tagRepository.findById(id)
             .orElseThrow(() ->
                 new RuntimeException("This tag does not exist.")
             );

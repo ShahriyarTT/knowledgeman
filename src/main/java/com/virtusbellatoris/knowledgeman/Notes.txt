@@ -1,0 +1,287 @@
+1. Favourite table or class with user_id, resource_type, resource_id
+2. UserLog table or class with user_id, registrationIp, logInDate, logOutDate
+3. Notification
+
+4. Date and Time
+    Only date?       → LocalDate
+    Date + time?     → LocalDateTime
+    Exact moment?    → Instant
+    Date + timezone? → ZonedDateTime
+
+5. Validation annotations — which to use:
+    @Column(nullable = false) — database level, prevents null in PostgreSQL column
+    @NotNull — Java/Bean validation level, catches null before hitting database
+    @NotBlank — like @NotNull but also rejects empty strings "" — best for String fields
+    @NotBlank is for Strings only. Enums can't be blank. Use @NotNull instead, for enums:
+
+6. @NotBlank on the entity only validates when JPA tries to persist it to the database.
+    By that point you're already deep in the service layer.
+    @NotBlank on the DTO validates at the controller level —
+    the moment the request comes in, before any service or database code runs.
+
+    But for @NotBlank on DTO to actually trigger, you
+    also need @Valid annotation on the controller method parameter:
+    public User register(@Valid @RequestBody UserDTO userDTO)
+    Without @Valid — the annotations are ignored even if they're on the DTO.
+
+    So the full picture:
+    •	@NotBlank on DTO + @Valid in controller → validates incoming request early
+    •	@NotBlank on entity → last line of defense before database
+    Both together give you two layers of protection. That's the correct approach.
+
+7. Why protected UserDTO() {}:
+    Jackson (the library that converts JSON to Java objects) needs
+    an empty constructor to create the object first, then fill the fields.
+    Without it, Jackson can't deserialize your JSON into UserDTO.
+
+    For your other DTOs it worked because Jackson can sometimes
+    use the parameterized constructor if it knows the parameter names —
+    but it's not guaranteed. Empty constructor is safer.
+
+    Actually for DTOs specifically — make it public not protected, since Jackson needs full access.
+
+8. Why remove @Enumerated:
+    @Enumerated tells JPA how to store an enum in the database. D
+    TO never touches the database — so @Enumerated has no effect and
+    doesn't belong there. The enum itself works fine without it in a DTO.
+
+9. ADD later email confirmation in user creation, also
+    email sending in profile update and password change? also
+    a lot of functionality can be added like recording changes of any
+    kind of profile data, OTP functionality adn so on
+
+    Email confirmation on registration:
+        Not too difficult — medium complexity. You need:
+            SMTP email service (Gmail, SendGrid etc.)
+            spring-boot-starter-mail dependency
+            Generate a confirmation token, store it, send email with link
+            Endpoint that validates the token and activates the account
+            Maybe 1-2 days of work.
+    Email on profile/password change:
+        Simple — just send a notification email when change happens. 1-2 hours once email is set up.
+    OTP:
+        Medium complexity — generate 6-digit code, store with expiry time, verify before action. 1 day of work.
+
+10. here's everything to remember and come back to:
+    Architecture:
+        Refactor to inheritance when project is complete (Resource parent class, one controller/service/repository)
+        Global exception handling (@ControllerAdvice) — proper HTTP status codes instead of 500
+    Features to add:
+        Movie, Documentary, Game, Saying, Concept, Content — 5 classes each, same pattern as Book
+        Filtering endpoints — GET /api/tags?resourceType=BOOK etc.
+        Spring Security — admin vs user roles
+    DevOps:
+        Fix Docker networking issue (app container can't reach db container)
+        Deploy on Railway, Render, or Fly.io
+    Frontend:
+        Build with AI assistance
+        Connect to backend (learn CORS in the process)
+        Buy domain and launch
+    CV checklist:
+        README — what it does, how to run it, technologies and why
+        Live link for interviewers
+    also remember
+        to add docker commands list later, like
+        building and deleting images, running and stopping images/containers and so on.
+        but do not do anything with it now. just wait for next prompt
+    My honest suggestion: skip Flyway for now.
+        Your schema will change a lot while you're figuring things out.
+        With Flyway, every change means a new migration file.
+        That friction will slow you down when you're still designing.
+        Add Flyway later when your tables are stable and
+        you're ready to think about production. That's the real-world flow anyway —
+        teams add Flyway after the design settles.
+    Noted. The three things to come back to later:
+        Admin vs regular user — secret code system for admin registration
+        Email features — confirmation on registration, notifications on profile/password change
+        Additional security features — OTP, change history logging, recording all profile data changes
+    Broader concept — Response DTOs:
+        This is exactly why best practice uses separate response DTOs.
+        Instead of returning User entity directly, you return a UserResponseDTO that
+        only contains safe fields — no hashedPassword, no internal fields. @JsonIgnore is
+        a quick fix but a proper UserResponseDTO is the cleaner long-term solution.
+        Note this for later — add UserResponseDTO when you have time.
+
+***********************
+11. WHY DID I USE DTO CLASS FOR BOOKS, FILMS AND SO ON? I GUESS IT WAS DUE TO USE TAG CLASS INSIDE BOOK CONSTRUCTOR.
+BUT ALSO WHY TO USE DTO CLASS FOR USER CLASS
+***********************
+
+12. explain where are spring security, spring, spring boot, spring mvc and other springs in my project
+    explain @Bean in SecurityConfig class
+    explain purpose of things that were added to application.properties
+    explain where are authentification and authorization in my code
+    explain annotations' meaning, especially on class names
+
+13. JwtService          — generates and validates JWT tokens
+    JwtFilter           —
+    SecurityConfig      — configures which endpoints need token
+    UserController      — login endpoint returns token
+    application.properties — stores secret key
+    docker-compose.yml  — passes secrets as environment variables
+
+14. Explain all annotations used in the project. also tell if they are related to spring, jps/hibernate or what?
+
+15. @Component:
+    You already know @Service and @RestController — both tell Spring "manage this class, create it, inject it where needed."
+    @Component is the generic parent annotation of all of these. @Service and @Controller are just @Component with extra meaning:
+        @Component — generic Spring-managed class
+        @Service — a component that contains business logic
+        @Controller — a component that handles HTTP requests
+    For JwtFilter — it's not a service, not a controller. It's a filter — a different kind of Spring-managed component. So you use the generic @Component.
+
+16. UserDetailsService:
+        This is a Spring Security interface with one method: loadUserByUsername(String username).
+        Despite the name "username" — in your case it will load by email since that's your login identifier.
+        Spring Security doesn't know anything about your User entity.
+        It has its own user concept called UserDetails — an interface that represents
+        an authenticated user. UserDetailsService is the bridge between your database and Spring Security.
+        When a request comes in with a JWT token:
+            Your JwtFilter extracts the email from the token
+            Calls userDetailsService.loadUserByUsername(email)
+            Spring Security gets a UserDetails object back
+            Uses it to verify the user exists and check their role
+        You need to implement this interface in your UserService or a separate class.
+        It requires returning a UserDetails object — Spring provides a built-in implementation
+        called User (confusingly same name as your entity) from org.springframework.security.core.userdetails.User.
+
+    SecurityContext:
+        Think of it as Spring Security's memory for the current request.
+        It holds information about who is currently making this request — their identity and permissions.
+        When your JwtFilter validates a token, it needs to tell Spring Security
+        "this request belongs to this authenticated user." It does this by putting
+        an Authentication object into the SecurityContext:
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        SecurityContextHolder — the container that holds the SecurityContext
+        SecurityContext — holds the Authentication object
+        Authentication — represents the authenticated user (who they are + their roles)
+
+        After this line, Spring Security knows the request is authenticated and allows it through to the controller.
+        If you never set this — Spring Security treats every request as anonymous and blocks protected endpoints.
+
+17. doFilterInternal method with Key concepts explained:
+
+    filterChain.doFilter(request, response) — every filter in Spring is part of a chain.
+    When your filter is done, it must pass the request to the next filter.
+    If you forget this line — the request stops and never reaches the controller.
+    Calling it at step 2 means "I have nothing to do with this request, pass it along."
+    Calling it at step 7 means "I've done my job, now pass it along."
+
+    return after step 2 — exits the method immediately. Without return,
+    the code would continue executing steps 3-6 even though there's no token. return is the exit door.
+
+    SecurityContextHolder.getContext().getAuthentication() == null — before
+    setting authentication, you check if it's already set. This prevents overwriting
+    an authentication that was set by a previous filter in the chain.
+
+    UsernamePasswordAuthenticationToken — despite the name suggesting username/password,
+    this class is used for any kind of authentication in Spring Security. The three parameters are:
+    the user, their credentials (null since JWT already proved identity), and their roles/permissions.
+
+    userDetails.getAuthorities() — returns the user's roles as a list Spring Security understands.
+    This is how Spring knows if someone is ADMIN or REGULAR when you later protect endpoints with role checks.
+
+18. doFilterInternal method - The full flow in plain English:
+        Request arrives
+        ↓
+        JwtFilter runs
+        ↓
+        Has Authorization header with Bearer token?
+          NO → pass to next filter (Spring Security decides)
+          YES → extract token
+                ↓
+                extract email from token
+                ↓
+                load user from database
+                ↓
+                token valid?
+                  NO → don't set authentication (Spring Security blocks protected endpoints)
+                  YES → set authentication in SecurityContext
+                        ↓
+                        pass to next filter → reaches controller
+
+    The deeper understanding — how SecurityContextHolder works internally,
+    what FilterChain actually does, how UsernamePasswordAuthenticationToken flows
+    through Spring Security — comes with time and experience.
+    You don't need to understand every library line to use it correctly.
+
+19. Analyse this! and learn copy-pasted additions later on !!! :
+     to userService:
+        @Override public UserDetails loadUserByUsername(String email){}
+     to SecurityConfig:
+        @Bean public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtFilter jwtFilter)
+        @Bean public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+        and other @Beans
+
+
+20. Analyse this! Added this at the top of each methods: updateProfile, changePassword, and deleteUser.
+    ownership check in UserService. You need to know who is currently logged in —
+    Spring Security provides that through SecurityContextHolder:
+    // Get currently logged in user's email from JWT
+    String loggedInEmail = SecurityContextHolder.getContext()
+        .getAuthentication()
+        .getName();
+
+    // Load the user being modified
+    User existingUser = userRepository.findById(id)
+        .orElseThrow(() -> new RuntimeException("User not found."));
+
+    // Check ownership — or allow admin
+    String existingUserEmail = existingUser.getEmail();
+    boolean isAdmin = SecurityContextHolder.getContext()
+        .getAuthentication()
+        .getAuthorities()
+        .stream()
+        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+    if (!loggedInEmail.equals(existingUserEmail) && !isAdmin) {
+        throw new RuntimeException("You are not allowed to modify this user.");
+    }
+
+21. You need a SecurityConfig class that:
+        Allows GET requests publicly
+        Protects POST/PUT/DELETE (admin only for now)
+        Disables CSRF (not needed for REST APIs)
+
+22. Best practice in the industry:
+    Separate DTOs for each operation. Each endpoint gets its own request/response DTO. No reusing DTOs across different operations.
+
+    So you'd have:
+    UserRegistrationDTO — for registration
+    UserProfileUpdateDTO — for profile update (includes currentPassword)
+    PasswordChangeDTO — for password change
+    UserResponseDTO — what you send back (never expose hashedPassword)
+
+    Why:
+    Each operation has different required fields, different validation rules, different security concerns.
+    Mixing them into one DTO creates confusion and forces you to make fields optional that should be mandatory,
+    or mandatory that should be optional.
+    For example password is mandatory for registration but irrelevant for profile update. If you reuse one DTO,
+    you either always require it or always make it optional — neither is correct.
+
+    Response DTOs too:
+    Best practice also separates what you receive (request DTO) from what you return (response DTO).
+    You never return your entity directly — you return a UserResponseDTO that only contains safe fields
+    (no hashedPassword, no sensitive data).
+    So for your project the clean solution is:
+
+    Rename current UserDTO to UserRegistrationDTO
+    Create UserProfileUpdateDTO with profile fields + currentPassword
+    Keep PasswordChangeDTO for password change
+    Create UserResponseDTO for what gets returned
+
+    That's the benchmark. Whether you implement it fully now or later is up to you.
+
+23. Here's where you stand:
+    - CRUD — Tags, Books, Movies, Games, Concepts etc.
+    - User entity, DTO, service, controller
+    - JWT token generation and validation
+    - BCrypt password hashing
+    - Docker + Docker Compose
+    - Database connected and working
+    **Connect to backend (CORS)
+    **Deployment: Railway/Render
+    **README
+
+24.

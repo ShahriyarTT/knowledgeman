@@ -1,4 +1,4 @@
-package com.virtusbellatoris.knowledgeman;
+package com.virtusbellatoris.knowledgeman.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,12 +17,6 @@ public class Tag {
     private String name;
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    private ResourceType resourceType;
-
-    @Enumerated(EnumType.STRING)
-    private TagCategory tagCategory;
-
     public enum ResourceType {
         BOOK,
         MOVIE,
@@ -34,6 +28,9 @@ public class Tag {
         ANY
     }
 
+    @Enumerated(EnumType.STRING)
+    private ResourceType resourceType;
+
     public enum TagCategory {
         THEME,
         GENRE,
@@ -42,6 +39,9 @@ public class Tag {
         SKILL,
         OTHER
     }
+
+    @Enumerated(EnumType.STRING)
+    private TagCategory tagCategory;
 
     // Constructors
     protected Tag() { // why need empty? and why protected?

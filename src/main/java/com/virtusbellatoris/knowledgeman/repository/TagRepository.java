@@ -1,6 +1,6 @@
 package com.virtusbellatoris.knowledgeman.repository;
 
-import com.virtusbellatoris.knowledgeman.Tag;
+import com.virtusbellatoris.knowledgeman.model.Tag;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
